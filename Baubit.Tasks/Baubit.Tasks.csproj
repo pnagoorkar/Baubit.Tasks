@@ -18,8 +18,8 @@
     <SignAssembly>$(SignAssembly)</SignAssembly>
     <AssemblyOriginatorKeyFile>$(KeyFilePath)</AssemblyOriginatorKeyFile>
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
-    <Description>TBD</Description>
-    <PackageTags>TBD</PackageTags>
+    <Description>Task utilities for .NET 9 featuring TimedCancellationTokenSource for automatic timeout-based cancellation and Task extension methods with FluentResults integration for improved error handling and cancellation token management.</Description>
+    <PackageTags>task;cancellation;timeout;fluentresults;async;cancellationtoken;taskcompletionsource;utilities;net9;baubit</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
