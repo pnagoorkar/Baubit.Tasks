@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Baubit.Tasks.Test/Baubit.Tasks.Test.csproj" Id="c4f597ca-a3a6-4baf-82d1-13fa9e97ee52" />
+  <Project Path="Baubit.Tasks/Baubit.Tasks.csproj" />
+</Solution>

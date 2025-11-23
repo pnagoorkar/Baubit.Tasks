@@ -1,28 +1,67 @@
-# Baubit.Template
+# Baubit.Tasks
 
-A template repository for .NET projects with CircleCI integration, code coverage, and automated package publishing.
 
-## Using This Template
+[![CircleCI](https://dl.circleci.com/status-badge/img/circleci/TpM4QUH8Djox7cjDaNpup5/2zTgJzKbD2m3nXCf5LKvqS/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/TpM4QUH8Djox7cjDaNpup5/2zTgJzKbD2m3nXCf5LKvqS/tree/master)
+[![codecov](https://codecov.io/gh/pnagoorkar/Baubit.Tasks/branch/master/graph/badge.svg)](https://codecov.io/gh/pnagoorkar/Baubit.Tasks)
+[![NuGet](https://img.shields.io/nuget/v/Baubit.Tasks.svg)](https://www.nuget.org/packages/Baubit.Tasks/)
 
-Follow these steps to use this template for your new project:
+Task utilities for .NET 9 with FluentResults integration.
 
-1. **Update .circleci/config.yml with solution and project names in your repository**
-   - Replace all instances of `<YOUR_SOLUTION_NAME>` with your solution name
-   - Replace all instances of `<YOUR_PROJECT_NAME>` with your project name
+## Install
 
-2. **Add CODECOV_TOKEN_Your_Project_Name in Context_Prashant in CircleCI**
-   - Go to CircleCI project settings
-   - Navigate to Contexts and find `Context_Prashant`
-   - Add an environment variable named `CODECOV_TOKEN_{YOUR_PROJECT_NAME}` 
-     - Replace dots in your project name with underscores (e.g., `My.Project` becomes `CODECOV_TOKEN_My_Project`)
-     - This is required for CircleCI environment variable naming conventions
-   - Set the value to your Codecov token from Codecov.io
+```bash
+dotnet add package Baubit.Tasks
+```
 
-3. **Configure repo settings in GitHub - branch protection rules etc**
-   - Set up branch protection rules for `master` and `release` branches
-   - Configure required status checks
-   - Set up code review requirements as needed
+## Features
 
-4. **Import projects in Codecov.io and Snyk.io**
-   - Import your repository in [Codecov.io](https://codecov.io) for code coverage tracking
-   - Import your repository in [Snyk.io](https://snyk.io) for security vulnerability scanning
+### TimedCancellationTokenSource
+
+Auto-cancelling `CancellationTokenSource` with configurable timeout.
+
+```csharp
+// Timer starts when token is accessed (default)
+using var cts = new TimedCancellationTokenSource(TimeSpan.FromSeconds(30));
+var token = cts.Token; // Timer starts now
+
+// Timer starts on explicit check
+using var cts = new TimedCancellationTokenSource(1000, timerStartsAtTokenAccess: false);
+if (cts.IsCancellationRequested) // Timer starts now
+{
+    // Handle cancellation
+}
+```
+
+### Task Extensions
+
+#### Wait / WaitAsync
+
+Convert task exceptions to `Result` objects.
+
+```csharp
+var result = task.Wait();
+if (result.IsSuccess) { /* ... */ }
+
+var result = await task.WaitAsync();
+```
+
+#### RegisterCancellationToken
+
+Link `CancellationToken` to `TaskCompletionSource`.
+
+```csharp
+var tcs = new TaskCompletionSource<int>();
+var cts = new CancellationTokenSource();
+
+tcs.RegisterCancellationToken(cts.Token);
+cts.Cancel(); // Automatically cancels tcs.Task
+```
+
+## Requirements
+
+- .NET 9.0
+- [FluentResults](https://github.com/altmann/FluentResults) (via Baubit.Traceability)
+
+## License
+
+MIT
