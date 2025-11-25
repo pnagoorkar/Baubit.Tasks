@@ -1,4 +1,7 @@
-﻿namespace Baubit.Tasks
+﻿using System;
+using System.Threading;
+
+namespace Baubit.Tasks
 {
     /// <summary>
     /// Represents a <see cref="CancellationTokenSource"/> that automatically cancels after a specified timeout period.
@@ -26,7 +29,7 @@
         /// The timeout as a <see cref="TimeSpan"/>. If set to <see cref="System.Threading.Timeout.InfiniteTimeSpan"/>, 
         /// the cancellation token will never timeout automatically.
         /// </value>
-        public TimeSpan Timeout { get; init; }
+        public TimeSpan Timeout { get; private set; }
 
         /// <summary>
         /// Gets a value indicating whether cancellation has been requested for this token source.
@@ -114,34 +117,6 @@
             Timeout = timeOut ?? System.Threading.Timeout.InfiniteTimeSpan;
             this.timerStartsAtTokenAccess = timerStartsAtTokenAccess;
 
-        }
-
-        /// <summary>
-        /// Attempts to reset the <see cref="TimedCancellationTokenSource"/> to its initial state.
-        /// </summary>
-        /// <returns>
-        /// <c>true</c> if the token source was successfully reset; otherwise, <c>false</c>.
-        /// Returns <c>false</c> if <see cref="CancellationTokenSource.CancelAfter(TimeSpan)"/> was previously called,
-        /// as the base implementation does not support resetting in this scenario.
-        /// </returns>
-        /// <remarks>
-        /// If the reset is successful, the internal <c>cancellationTriggered</c> flag is reset, 
-        /// allowing the timer to be started again on the next access to <see cref="Token"/> or <see cref="IsCancellationRequested"/>.
-        /// <para>
-        /// Note: In .NET 9, <see cref="CancellationTokenSource.TryReset"/> returns <c>false</c> if the cancellation 
-        /// was triggered by a timer set with <see cref="CancellationTokenSource.CancelAfter(TimeSpan)"/>.
-        /// It typically returns <c>true</c> only if cancellation was triggered manually via <see cref="CancellationTokenSource.Cancel()"/>
-        /// and the timer had not been started.
-        /// </para>
-        /// </remarks>
-        public new bool TryReset()
-        {
-            var retVal = base.TryReset();
-            if (retVal)
-            {
-                cancellationTriggered = false;
-            }
-            return retVal;
         }
     }
 }
