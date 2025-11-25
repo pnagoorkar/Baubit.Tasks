@@ -2,9 +2,7 @@
 
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <AssemblyVersion>$(AssemblyVersion)</AssemblyVersion>
@@ -18,8 +16,8 @@
     <SignAssembly>$(SignAssembly)</SignAssembly>
     <AssemblyOriginatorKeyFile>$(KeyFilePath)</AssemblyOriginatorKeyFile>
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
-    <Description>Task utilities for .NET 9 featuring TimedCancellationTokenSource for automatic timeout-based cancellation and Task extension methods with FluentResults integration for improved error handling and cancellation token management.</Description>
-    <PackageTags>task;cancellation;timeout;fluentresults;async;cancellationtoken;taskcompletionsource;utilities;net9;baubit</PackageTags>
+    <Description>Task utilities featuring TimedCancellationTokenSource for automatic timeout-based cancellation and Task extension methods with FluentResults integration for improved error handling and cancellation token management.</Description>
+    <PackageTags>task;cancellation;timeout;fluentresults;async;cancellationtoken;taskcompletionsource;utilities;baubit</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Baubit.Traceability" Version="2025.46.1" />
+    <PackageReference Include="Baubit.Traceability" Version="2025.48.1" />
   </ItemGroup>
 
 </Project>
