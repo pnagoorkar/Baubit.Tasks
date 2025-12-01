@@ -128,6 +128,96 @@ namespace Baubit.Tasks
         }
 
         /// <summary>
+        /// Asynchronously waits for the task to complete or be cancelled via the provided <see cref="CancellationToken"/>.
+        /// </summary>
+        /// <param name="task">The task to wait for.</param>
+        /// <param name="cancellationToken">The cancellation token to observe while waiting.</param>
+        /// <returns>A task that completes when the original task completes or the cancellation token is triggered.</returns>
+        /// <exception cref="TaskCanceledException">Thrown when the <paramref name="cancellationToken"/> is cancelled before the task completes.</exception>
+        /// <remarks>
+        /// <para>
+        /// This method provides functionality similar to .NET 6+'s built-in <c>Task.WaitAsync(CancellationToken)</c> 
+        /// for use in .NET Standard 2.0 environments.
+        /// </para>
+        /// <para>
+        /// If the cancellation token is cancelled before the task completes, a <see cref="TaskCanceledException"/> is thrown.
+        /// If the original task completes first (successfully, faulted, or cancelled), the result is propagated.
+        /// </para>
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        /// try
+        /// {
+        ///     await longRunningTask.WaitAsync(cts.Token);
+        /// }
+        /// catch (TaskCanceledException)
+        /// {
+        ///     // Timeout occurred
+        /// }
+        /// </code>
+        /// </example>
+        public static async Task WaitAsync(this Task task, CancellationToken cancellationToken)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            using (cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken), useSynchronizationContext: false))
+            {
+                var completedTask = await Task.WhenAny(task, tcs.Task).ConfigureAwait(false);
+                if (completedTask == tcs.Task)
+                {
+                    throw new TaskCanceledException(tcs.Task);
+                }
+                await task.ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously waits for the task to complete or be cancelled via the provided <see cref="CancellationToken"/>,
+        /// and returns the result.
+        /// </summary>
+        /// <typeparam name="TResult">The type of the task result.</typeparam>
+        /// <param name="task">The task to wait for.</param>
+        /// <param name="cancellationToken">The cancellation token to observe while waiting.</param>
+        /// <returns>A task that completes with the result when the original task completes or throws when the cancellation token is triggered.</returns>
+        /// <exception cref="TaskCanceledException">Thrown when the <paramref name="cancellationToken"/> is cancelled before the task completes.</exception>
+        /// <remarks>
+        /// <para>
+        /// This method provides functionality similar to .NET 6+'s built-in <c>Task&lt;TResult&gt;.WaitAsync(CancellationToken)</c> 
+        /// for use in .NET Standard 2.0 environments.
+        /// </para>
+        /// <para>
+        /// If the cancellation token is cancelled before the task completes, a <see cref="TaskCanceledException"/> is thrown.
+        /// If the original task completes first (successfully, faulted, or cancelled), the result is propagated.
+        /// </para>
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        /// try
+        /// {
+        ///     var result = await longRunningTask.WaitAsync(cts.Token);
+        /// }
+        /// catch (TaskCanceledException)
+        /// {
+        ///     // Timeout occurred
+        /// }
+        /// </code>
+        /// </example>
+        public static async Task<TResult> WaitAsync<TResult>(this Task<TResult> task, CancellationToken cancellationToken)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            using (cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken), useSynchronizationContext: false))
+            {
+                var completedTask = await Task.WhenAny(task, tcs.Task).ConfigureAwait(false);
+                if (completedTask == tcs.Task)
+                {
+                    throw new TaskCanceledException(tcs.Task);
+                }
+                return await task.ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
         /// Registers a <see cref="CancellationToken"/> with a <see cref="TaskCompletionSource{TResult}"/> 
         /// so that the task is automatically cancelled when the token is cancelled.
         /// </summary>
