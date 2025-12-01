@@ -173,7 +173,7 @@ namespace Baubit.Tasks.Test.TaskExtensions
             var task = Task.Run(async () => await Task.Delay(100), cts.Token);
 
             // Act & Assert - TaskCanceledException is not caught by WaitAsync when using await
-            await Assert.ThrowsAsync<TaskCanceledException>(async () => 
+            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
                 await task.WaitAsync(ignoreTaskCancellationException: false));
         }
 
@@ -186,7 +186,7 @@ namespace Baubit.Tasks.Test.TaskExtensions
             var task = Task.Run(async () => await Task.Delay(100), cts.Token);
 
             // Act & Assert - Even with ignore=true, TaskCanceledException is not caught when using await
-            await Assert.ThrowsAsync<TaskCanceledException>(async () => 
+            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
                 await task.WaitAsync(ignoreTaskCancellationException: true));
         }
 
@@ -199,7 +199,7 @@ namespace Baubit.Tasks.Test.TaskExtensions
             cts.Cancel();
 
             // Act & Assert - TaskCanceledException is thrown directly, not caught
-            await Assert.ThrowsAsync<TaskCanceledException>(async () => 
+            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
                 await task.WaitAsync(ignoreTaskCancellationException: false));
         }
 
@@ -228,7 +228,7 @@ namespace Baubit.Tasks.Test.TaskExtensions
             // Arrange - Create a task that will throw AggregateException with TaskCanceledException
             var tcs = new TaskCompletionSource<int>();
             tcs.SetException(new AggregateException(new TaskCanceledException()));
-            var task = tcs.Task.ContinueWith(t => 
+            var task = tcs.Task.ContinueWith(t =>
             {
                 try { t.Wait(); }
                 catch (AggregateException) { throw; }
@@ -250,7 +250,7 @@ namespace Baubit.Tasks.Test.TaskExtensions
             var tcs = new TaskCompletionSource<int>();
             var innerTcs = new TaskCompletionSource<int>();
             innerTcs.SetCanceled();
-            
+
             // Create a continuation that catches and rethrows as AggregateException
             var task = Task.Run(() =>
             {
@@ -479,6 +479,230 @@ namespace Baubit.Tasks.Test.TaskExtensions
             // Assert
             Assert.True(tcs.Task.IsFaulted);
             Assert.IsType<InvalidOperationException>(tcs.Task.Exception?.InnerException);
+        }
+
+        #endregion
+
+        #region WaitAsync with CancellationToken Tests
+
+        [Fact]
+        public async Task WaitAsync_WithCancellationToken_TaskCompletesBeforeCancellation_ReturnsSuccessfully()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var task = Task.CompletedTask;
+
+            // Act - Use static invocation to call our extension method (not .NET 9's native method)
+            await Tasks.TaskExtensions.WaitAsync(task, cts.Token);
+
+            // Assert - no exception thrown
+            Assert.True(task.IsCompleted);
+        }
+
+        [Fact]
+        public async Task WaitAsync_WithCancellationToken_CancellationRequestedBeforeTaskCompletes_ThrowsTaskCanceledException()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var tcs = new TaskCompletionSource<bool>();
+            var task = tcs.Task;
+
+            // Act
+            cts.Cancel();
+
+            // Assert
+            await Assert.ThrowsAsync<TaskCanceledException>(async () => await Tasks.TaskExtensions.WaitAsync(task, cts.Token));
+        }
+
+        [Fact]
+        public async Task WaitAsync_WithCancellationToken_TaskFaults_PropagatesException()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var tcs = new TaskCompletionSource<bool>();
+            tcs.SetException(new InvalidOperationException("Test exception"));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Tasks.TaskExtensions.WaitAsync(tcs.Task, cts.Token));
+        }
+
+        [Fact]
+        public async Task WaitAsync_WithCancellationToken_AlreadyCancelledToken_ThrowsImmediately()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+            var task = Task.Delay(5000);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<TaskCanceledException>(async () => await Tasks.TaskExtensions.WaitAsync(task, cts.Token));
+        }
+
+        [Fact]
+        public async Task WaitAsync_WithCancellationToken_CancellationDuringWait_ThrowsTaskCanceledException()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var task = Task.Delay(5000);
+
+            // Schedule cancellation
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(50);
+                cts.Cancel();
+            });
+
+            // Act & Assert
+            await Assert.ThrowsAsync<TaskCanceledException>(async () => await Tasks.TaskExtensions.WaitAsync(task, cts.Token));
+        }
+
+        [Fact]
+        public async Task WaitAsync_WithCancellationToken_NoneToken_CompletesNormally()
+        {
+            // Arrange
+            var task = Task.Delay(50);
+
+            // Act
+            await Tasks.TaskExtensions.WaitAsync(task, CancellationToken.None);
+
+            // Assert - no exception thrown
+            Assert.True(task.IsCompleted);
+        }
+
+        [Fact]
+        public async Task WaitAsyncGeneric_WithCancellationToken_TaskCompletesBeforeCancellation_ReturnsResult()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var task = Task.FromResult(42);
+
+            // Act
+            var result = await Tasks.TaskExtensions.WaitAsync(task, cts.Token);
+
+            // Assert
+            Assert.Equal(42, result);
+        }
+
+        [Fact]
+        public async Task WaitAsyncGeneric_WithCancellationToken_CancellationRequestedBeforeTaskCompletes_ThrowsTaskCanceledException()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var tcs = new TaskCompletionSource<int>();
+            var task = tcs.Task;
+
+            // Act
+            cts.Cancel();
+
+            // Assert
+            await Assert.ThrowsAsync<TaskCanceledException>(async () => await Tasks.TaskExtensions.WaitAsync(task, cts.Token));
+        }
+
+        [Fact]
+        public async Task WaitAsyncGeneric_WithCancellationToken_TaskFaults_PropagatesException()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var tcs = new TaskCompletionSource<int>();
+            tcs.SetException(new InvalidOperationException("Test exception"));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Tasks.TaskExtensions.WaitAsync(tcs.Task, cts.Token));
+        }
+
+        [Fact]
+        public async Task WaitAsyncGeneric_WithCancellationToken_AlreadyCancelledToken_ThrowsImmediately()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+            var task = Task.Run(async () =>
+            {
+                await Task.Delay(5000);
+                return 42;
+            });
+
+            // Act & Assert
+            await Assert.ThrowsAsync<TaskCanceledException>(async () => await Tasks.TaskExtensions.WaitAsync(task, cts.Token));
+        }
+
+        [Fact]
+        public async Task WaitAsyncGeneric_WithCancellationToken_CancellationDuringWait_ThrowsTaskCanceledException()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var task = Task.Run(async () =>
+            {
+                await Task.Delay(5000);
+                return 42;
+            });
+
+            // Schedule cancellation
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(50);
+                cts.Cancel();
+            });
+
+            // Act & Assert
+            await Assert.ThrowsAsync<TaskCanceledException>(async () => await Tasks.TaskExtensions.WaitAsync(task, cts.Token));
+        }
+
+        [Fact]
+        public async Task WaitAsyncGeneric_WithCancellationToken_NoneToken_CompletesNormally()
+        {
+            // Arrange
+            var task = Task.Run(async () =>
+            {
+                await Task.Delay(50);
+                return "test";
+            });
+
+            // Act
+            var result = await Tasks.TaskExtensions.WaitAsync(task, CancellationToken.None);
+
+            // Assert
+            Assert.Equal("test", result);
+        }
+
+        [Fact]
+        public async Task WaitAsyncGeneric_WithCancellationToken_TaskAlreadyComplete_ReturnsImmediately()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var task = Task.FromResult("already complete");
+
+            // Act
+            var result = await Tasks.TaskExtensions.WaitAsync(task, cts.Token);
+
+            // Assert
+            Assert.Equal("already complete", result);
+        }
+
+        [Fact]
+        public async Task WaitAsync_WithCancellationToken_OriginalTaskCancelled_PropagatesCancellation()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var taskCts = new CancellationTokenSource();
+            taskCts.Cancel();
+            var task = Task.FromCanceled(taskCts.Token);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<TaskCanceledException>(async () => await Tasks.TaskExtensions.WaitAsync(task, cts.Token));
+        }
+
+        [Fact]
+        public async Task WaitAsyncGeneric_WithCancellationToken_OriginalTaskCancelled_PropagatesCancellation()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var taskCts = new CancellationTokenSource();
+            taskCts.Cancel();
+            var task = Task.FromCanceled<int>(taskCts.Token);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<TaskCanceledException>(async () => await Tasks.TaskExtensions.WaitAsync(task, cts.Token));
         }
 
         #endregion
