@@ -48,6 +48,25 @@ if (result.IsSuccess) { /* ... */ }
 var result = await task.WaitAsync();
 ```
 
+#### WaitAsync with CancellationToken
+
+Asynchronously wait for a task with cancellation support. Provides .NET 6+ `WaitAsync(CancellationToken)` functionality for .NET Standard 2.0.
+
+```csharp
+var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+try
+{
+    await longRunningTask.WaitAsync(cts.Token);
+}
+catch (TaskCanceledException)
+{
+    // Timeout occurred
+}
+
+// With result
+var result = await task.WaitAsync<int>(cts.Token);
+```
+
 #### RegisterCancellationToken
 
 Link `CancellationToken` to `TaskCompletionSource`.
@@ -58,6 +77,23 @@ var cts = new CancellationTokenSource();
 
 tcs.RegisterCancellationToken(cts.Token);
 cts.Cancel(); // Automatically cancels tcs.Task
+```
+
+### Type Extensions
+
+#### CreateInstance
+
+Create type instances via reflection with `Result` error handling.
+
+```csharp
+var result = typeof(MyService).CreateInstance<IMyService>(
+    new[] { typeof(IConfiguration), typeof(ILogger) },
+    new object[] { config, logger }
+);
+if (result.IsSuccess)
+{
+    var service = result.Value;
+}
 ```
 
 ## License
