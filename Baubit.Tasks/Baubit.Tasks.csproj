@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Baubit.Traceability" Version="2025.48.1" />
+    <PackageReference Include="Baubit.Traceability" />
   </ItemGroup>
 
 </Project>
