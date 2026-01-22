@@ -15,7 +15,7 @@ namespace Baubit.Tasks
     /// <item>When <c>false</c>: Timer starts on first access to the <see cref="IsCancellationRequested"/> property</item>
     /// </list>
     /// <para>
-    /// Note: Due to the use of <see cref="CancellationTokenSource.CancelAfter(TimeSpan)"/>, calling <see cref="TryReset"/> 
+    /// Note: Due to the use of <see cref="CancellationTokenSource.CancelAfter(TimeSpan)"/>, calling <c>TryReset</c> 
     /// will return <c>false</c> after the timer has been triggered, as the base implementation does not support resetting 
     /// after <c>CancelAfter</c> has been called.
     /// </para>
