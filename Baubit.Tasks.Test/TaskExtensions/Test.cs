@@ -258,7 +258,7 @@ namespace Baubit.Tasks.Test.TaskExtensions
                 {
                     innerTcs.Task.Wait();
                 }
-                catch (AggregateException ex)
+                catch (AggregateException)
                 {
                     // Rethrow to keep it as AggregateException
                     throw;
@@ -321,7 +321,7 @@ namespace Baubit.Tasks.Test.TaskExtensions
 
             // Assert
             Assert.True(tcs.Task.IsCompletedSuccessfully);
-            Assert.Equal(42, tcs.Task.Result);
+            Assert.Equal(42, await tcs.Task);
         }
 
         [Fact]
