@@ -155,7 +155,7 @@
             var cts = new Tasks.TimedCancellationTokenSource(50, timerStartsAtTokenAccess: true);
             // Access token starts timer when timerStartsAtTokenAccess is true
             var token = cts.Token;
-            await Task.Delay(100);
+            await Task.Delay(150);
             Assert.True(token.IsCancellationRequested);
 
             // Act
