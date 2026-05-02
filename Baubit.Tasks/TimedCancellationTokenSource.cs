@@ -40,15 +40,18 @@ namespace Baubit.Tasks
         /// <remarks>
         /// Accessing this property for the first time will start the cancellation timer if it hasn't already been started.
         /// Subsequent accesses will not restart the timer.
+        /// <para>
+        /// This property is thread-safe: <see cref="CancellationTokenSource.CancelAfter(TimeSpan)"/> is guaranteed to be called at most once,
+        /// even when accessed concurrently from multiple threads.
+        /// </para>
         /// </remarks>
         public new bool IsCancellationRequested
         {
             get
             {
-                if (!cancellationTriggered)
+                if (Interlocked.CompareExchange(ref cancellationTriggered, 1, 0) == 0)
                 {
                     CancelAfter(Timeout);
-                    cancellationTriggered = true;
                 }
                 return base.IsCancellationRequested;
             }
@@ -65,22 +68,25 @@ namespace Baubit.Tasks
         /// accessing this property for the first time will start the cancellation timer.
         /// If <c>timerStartsAtTokenAccess</c> is <c>false</c>, the timer will not start until 
         /// <see cref="IsCancellationRequested"/> is accessed.
+        /// <para>
+        /// This property is thread-safe: <see cref="CancellationTokenSource.CancelAfter(TimeSpan)"/> is guaranteed to be called at most once,
+        /// even when accessed concurrently from multiple threads.
+        /// </para>
         /// </remarks>
         public new CancellationToken Token
         {
             get
             {
-                if (timerStartsAtTokenAccess && !cancellationTriggered)
+                if (timerStartsAtTokenAccess && Interlocked.CompareExchange(ref cancellationTriggered, 1, 0) == 0)
                 {
                     CancelAfter(Timeout);
-                    cancellationTriggered = true;
                 }
                 return base.Token;
             }
         }
 
-        private bool timerStartsAtTokenAccess;
-        private bool cancellationTriggered;
+        private readonly bool timerStartsAtTokenAccess;
+        private int cancellationTriggered; // 0 = not yet triggered, 1 = triggered; access via Interlocked
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TimedCancellationTokenSource"/> class with a specified timeout in milliseconds.
@@ -93,7 +99,7 @@ namespace Baubit.Tasks
         /// <remarks>
         /// This constructor converts the millisecond timeout to a <see cref="TimeSpan"/> and delegates to the primary constructor.
         /// </remarks>
-        public TimedCancellationTokenSource(uint millisecondTimeout, bool timerStartsAtTokenAccess = true) 
+        public TimedCancellationTokenSource(uint millisecondTimeout, bool timerStartsAtTokenAccess = true)
             : this(new TimeSpan(0, 0, 0, 0, (int)millisecondTimeout), timerStartsAtTokenAccess) { }
 
         /// <summary>
