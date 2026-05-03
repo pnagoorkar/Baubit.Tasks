@@ -47,7 +47,7 @@
         }
 
         [Fact]
-        public async Task Token_WithTimerStartsAtTokenAccessTrue_StartsTimerOnFirstAccess()
+        public void Token_WithTimerStartsAtTokenAccessTrue_StartsTimerOnFirstAccess()
         {
             // Arrange
             var cts = new Tasks.TimedCancellationTokenSource(100, timerStartsAtTokenAccess: true);
@@ -55,8 +55,8 @@
             // Act - access token to start timer
             var token = cts.Token;
 
-            // Assert - wait for cancellation
-            await Task.Delay(150);
+            // Assert - wait for actual cancellation event (not a fixed delay)
+            Assert.True(token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)));
             Assert.True(token.IsCancellationRequested);
         }
 
@@ -88,7 +88,7 @@
         }
 
         [Fact]
-        public async Task IsCancellationRequested_StartsTimerOnFirstAccess()
+        public void IsCancellationRequested_StartsTimerOnFirstAccess()
         {
             // Arrange
             var cts = new Tasks.TimedCancellationTokenSource(100, timerStartsAtTokenAccess: false);
@@ -96,9 +96,9 @@
             // Act - access IsCancellationRequested to start timer
             var initialCheck = cts.IsCancellationRequested;
 
-            // Assert
+            // Assert - wait for actual cancellation event (not a fixed delay)
             Assert.False(initialCheck);
-            await Task.Delay(150);
+            Assert.True(cts.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)));
             Assert.True(cts.IsCancellationRequested);
         }
 
@@ -119,26 +119,28 @@
         }
 
         [Fact]
-        public async Task CancellationToken_GetsCancelledAfterTimeout()
+        public void CancellationToken_GetsCancelledAfterTimeout()
         {
             // Arrange
             var cts = new Tasks.TimedCancellationTokenSource(100);
             var token = cts.Token;
 
-            // Act & Assert
+            // Act & Assert - wait for actual cancellation event (not a fixed delay)
             Assert.False(token.IsCancellationRequested);
-            await Task.Delay(150);
+            Assert.True(token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)));
             Assert.True(token.IsCancellationRequested);
         }
 
         [Fact]
-        public async Task TryReset_AfterTimeoutCancellation_ReturnsFalse()
+        public void TryReset_AfterTimeoutCancellation_ReturnsFalse()
         {
             // Arrange
             var cts = new Tasks.TimedCancellationTokenSource(50, timerStartsAtTokenAccess: false);
             // Manually trigger cancellation via timeout
             _ = cts.IsCancellationRequested;
-            await Task.Delay(100);
+
+            // Wait for actual cancellation event (not a fixed delay)
+            Assert.True(cts.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)));
             Assert.True(cts.IsCancellationRequested);
 
             // Act
@@ -149,13 +151,15 @@
         }
 
         [Fact]
-        public async Task TryReset_WithTimerStartedViaToken_ReturnsFalse()
+        public void TryReset_WithTimerStartedViaToken_ReturnsFalse()
         {
             // Arrange
             var cts = new Tasks.TimedCancellationTokenSource(50, timerStartsAtTokenAccess: true);
             // Access token starts timer when timerStartsAtTokenAccess is true
             var token = cts.Token;
-            await Task.Delay(100);
+
+            // Wait for actual cancellation event (not a fixed delay)
+            Assert.True(token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)));
             Assert.True(token.IsCancellationRequested);
 
             // Act
@@ -236,14 +240,14 @@
         }
 
         [Fact]
-        public async Task VeryShortTimeout_CancelsQuickly()
+        public void VeryShortTimeout_CancelsQuickly()
         {
             // Arrange
             var cts = new Tasks.TimedCancellationTokenSource(1);
             var token = cts.Token;
 
-            // Act & Assert
-            await Task.Delay(50);
+            // Act & Assert - wait for actual cancellation event (not a fixed delay)
+            Assert.True(token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)));
             Assert.True(token.IsCancellationRequested);
         }
 
@@ -277,30 +281,32 @@
             // Arrange
             var cts = new Tasks.TimedCancellationTokenSource(5000, timerStartsAtTokenAccess: true);
             var token = cts.Token; // Starts timer
-            
+
             // Act
             var resetResult = cts.TryReset();
 
             // Assert - Reset succeeds and resets the cancellationTriggered flag
             Assert.True(resetResult);
-            
+
             // After reset, accessing token again should start timer again
             var token2 = cts.Token;
             Assert.False(token2.IsCancellationRequested);
         }
 
         [Fact]
-        public async Task TryReset_ResetsInternalFlag_AllowsTimerToRestartOnNextAccess()
+        public void TryReset_ResetsInternalFlag_AllowsTimerToRestartOnNextAccess()
         {
             // Arrange
             var cts = new Tasks.TimedCancellationTokenSource(100, timerStartsAtTokenAccess: false);
             _ = cts.IsCancellationRequested; // Start timer
-            await Task.Delay(150);
+
+            // Wait for actual cancellation event (not a fixed delay)
+            Assert.True(cts.Token.WaitHandle.WaitOne(TimeSpan.FromSeconds(5)));
             Assert.True(cts.IsCancellationRequested);
 
             // Act - Reset (will fail because of CancelAfter)
             var resetResult = cts.TryReset();
-            
+
             // If reset succeeded, the cancellationTriggered flag should be reset
             if (resetResult)
             {

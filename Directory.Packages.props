@@ -1,0 +1,26 @@
+<Project>
+
+  <!-- Import the root Directory.Packages.props if it exists (for monorepo builds) -->
+  <!-- When building standalone, this import is skipped gracefully -->
+  <PropertyGroup>
+    <ParentPackagesPropsPath>$([MSBuild]::GetPathOfFileAbove('Directory.Packages.props', '$(MSBuildThisFileDirectory)../'))</ParentPackagesPropsPath>
+  </PropertyGroup>
+  <Import Project="$(ParentPackagesPropsPath)" Condition="'$(ParentPackagesPropsPath)' != ''" />
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!-- Define package versions only when parent doesn't exist (standalone builds) -->
+  <ItemGroup Condition="'$(ParentPackagesPropsPath)' == ''">
+    <!-- Production Dependencies -->
+    <PackageVersion Include="Baubit.Traceability" Version="2025.48.1" />
+    
+    <!-- Test Dependencies -->
+    <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+</Project>
