@@ -1,5 +1,6 @@
 ﻿using FluentResults;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -263,6 +264,112 @@ namespace Baubit.Tasks
         {
             return Result.Try(() => cancellationToken.Register(() => taskCompletionSource.TrySetCanceled(cancellationToken), useSynchronizationContext: false))
                          .Bind(registration => Result.Try(() => { taskCompletionSource.Task.ContinueWith(_ => registration.Dispose(), TaskScheduler.Default); }));
+        }
+
+        /// <summary>
+        /// Returns a task that completes when the <paramref name="cancellationToken"/> is cancelled.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token to observe.</param>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> of <see cref="bool"/> that resolves to <c>true</c> when the token is cancelled.
+        /// </returns>
+        /// <remarks>
+        /// This overload waits indefinitely until the token is cancelled. For a timeout-bounded variant, 
+        /// use <see cref="GetCancellationAwaiterAsync(CancellationToken, TimeSpan)"/>.
+        /// </remarks>
+        public static Task<bool> GetCancellationAwaiterAsync(this CancellationToken cancellationToken)
+        {
+            return cancellationToken.GetCancellationAwaiterAsync(additionalTokens: []);
+        }
+
+        /// <summary>
+        /// Returns a task that completes when the <paramref name="cancellationToken"/> is cancelled or the specified timeout elapses.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token to observe.</param>
+        /// <param name="maxAwait">The maximum duration to wait before the returned task completes regardless of cancellation.</param>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> of <see cref="bool"/> that resolves to <c>true</c> when the token is cancelled or the timeout elapses.
+        /// </returns>
+        /// <remarks>
+        /// Internally creates a <see cref="CancellationTokenSource"/> that cancels after <paramref name="maxAwait"/> and 
+        /// links it as an additional token so the awaiter completes on whichever fires first.
+        /// </remarks>
+        public static Task<bool> GetCancellationAwaiterAsync(this CancellationToken cancellationToken, TimeSpan maxAwait)
+        {
+            return cancellationToken.GetCancellationAwaiterAsync(maxAwait: maxAwait, additionalTokens: []);
+        }
+
+        /// <summary>
+        /// Returns a task that completes when the <paramref name="cancellationToken"/> is cancelled, the specified timeout elapses,
+        /// or any of the <paramref name="additionalTokens"/> are cancelled.
+        /// </summary>
+        /// <param name="cancellationToken">The primary cancellation token to observe.</param>
+        /// <param name="maxAwait">The maximum duration to wait before the returned task completes.</param>
+        /// <param name="additionalTokens">Zero or more additional cancellation tokens to observe alongside the primary token and the timeout.</param>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> of <see cref="bool"/> that resolves to <c>true</c> when any of the observed tokens is cancelled or the timeout elapses.
+        /// </returns>
+        /// <remarks>
+        /// A timed <see cref="CancellationTokenSource"/> is created for the duration of the call and disposed automatically 
+        /// when the awaiter completes.
+        /// </remarks>
+        public static async Task<bool> GetCancellationAwaiterAsync(this CancellationToken cancellationToken, TimeSpan maxAwait, params CancellationToken[] additionalTokens)
+        {
+            using var timedCTS = new CancellationTokenSource(maxAwait);
+            return await cancellationToken.GetCancellationAwaiterAsync(additionalTokens: [timedCTS.Token, .. additionalTokens]).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Returns a task that completes when the <paramref name="cancellationToken"/> or any of the <paramref name="additionalTokens"/> are cancelled.
+        /// </summary>
+        /// <param name="cancellationToken">The primary cancellation token to observe.</param>
+        /// <param name="additionalTokens">Zero or more additional cancellation tokens to observe alongside the primary token.</param>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> of <see cref="bool"/> that resolves to <c>true</c> when any of the observed tokens is cancelled.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// Short-circuit checks are performed before and immediately after registering each token to avoid unnecessary waits 
+        /// when a token is already cancelled or becomes cancelled during registration.
+        /// </para>
+        /// <para>
+        /// Any <see cref="TaskCanceledException"/> thrown by the internal <see cref="TaskCompletionSource{TResult}"/> is swallowed; 
+        /// the method always returns <c>true</c>.
+        /// </para>
+        /// </remarks>
+        public static async Task<bool> GetCancellationAwaiterAsync(this CancellationToken cancellationToken, params CancellationToken[] additionalTokens)
+        {
+            var allTokens = (IEnumerable<CancellationToken>)[cancellationToken, .. additionalTokens];
+            var taskCompletionSource = new TaskCompletionSource<bool>();
+            foreach (var ct in allTokens)
+            {
+                if (ct.IsCancellationRequested) return true; // short circuit - avoid wasting time if the ct is already cancelled.
+                taskCompletionSource.RegisterCancellationToken(ct);
+                if (ct.IsCancellationRequested) return true; // in case the ct was cancelled betwee the prior check and registration
+            }
+            try
+            {
+                await taskCompletionSource.Task.ConfigureAwait(false);
+            }
+            catch
+            {
+                // the awaited task will complete only when the linked CTS is cancelled. It will throw a task cancelled exception. Swallow it.
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Creates a <see cref="TimedCancellationTokenSource"/> that automatically cancels after the specified <paramref name="timeSpan"/>.
+        /// </summary>
+        /// <param name="timeSpan">The duration after which the <see cref="TimedCancellationTokenSource"/> will be cancelled.</param>
+        /// <param name="timerStartsAtTokenAccess">
+        /// When <c>true</c> (default), the countdown timer starts the first time the <see cref="CancellationTokenSource.Token"/> property is accessed.
+        /// When <c>false</c>, the timer starts the first time <see cref="CancellationTokenSource.IsCancellationRequested"/> is read.
+        /// </param>
+        /// <returns>A new <see cref="TimedCancellationTokenSource"/> configured with the given timeout and start strategy.</returns>
+        public static TimedCancellationTokenSource CreateTimedCancellationTokenSource(this TimeSpan timeSpan, bool timerStartsAtTokenAccess = true)
+        {
+            return new TimedCancellationTokenSource(timeSpan, timerStartsAtTokenAccess);
         }
     }
 }

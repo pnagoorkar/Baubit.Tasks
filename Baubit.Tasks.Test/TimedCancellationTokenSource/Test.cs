@@ -218,7 +218,7 @@
 
             // Act
             var token1 = cts.Token;
-            await Task.Delay(50);
+            await Task.Delay(50, TestContext.Current.CancellationToken);
             var token2 = cts.Token;
 
             // Assert
